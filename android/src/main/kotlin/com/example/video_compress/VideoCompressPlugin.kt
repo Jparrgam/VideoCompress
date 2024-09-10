@@ -94,7 +94,7 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
 
                     VideoCompressor.start(
                         context = context,
-                        uris = listOf(path),
+                        uris = listOf(Uri.fromFile(file)),
                         isStreamable = false,
                         storageConfiguration = CacheStorageConfiguration(),
                         configureWith = Configuration(
