@@ -3,6 +3,11 @@ package com.example.video_compress
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import com.abedelazizshe.lightcompressorlibrary.CompressionListener
+import com.abedelazizshe.lightcompressorlibrary.VideoCompressor
+import com.abedelazizshe.lightcompressorlibrary.VideoQuality
+import com.abedelazizshe.lightcompressorlibrary.config.CacheStorageConfiguration
+import com.abedelazizshe.lightcompressorlibrary.config.Configuration
 import com.otaliastudios.transcoder.Transcoder
 import com.otaliastudios.transcoder.TranscoderListener
 import com.otaliastudios.transcoder.source.TrimDataSource
@@ -34,7 +39,6 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
     private var _channel: MethodChannel? = null
     private val TAG = "VideoCompressPlugin"
     private val LOG = Logger(TAG)
-    private var transcodeFuture:Future<Void>? = null
     var channelName = "video_compress"
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -51,99 +55,62 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                 val path = call.argument<String>("path")
                 val quality = call.argument<Int>("quality")!!
                 val position = call.argument<Int>("position")!! // to long
-                ThumbnailUtility(channelName).getByteThumbnail(path!!, quality, position.toLong(), result)
+                ThumbnailUtility(channelName).getByteThumbnail(
+                    path!!,
+                    quality,
+                    position.toLong(),
+                    result
+                )
             }
+
             "getFileThumbnail" -> {
                 val path = call.argument<String>("path")
                 val quality = call.argument<Int>("quality")!!
                 val position = call.argument<Int>("position")!! // to long
-                ThumbnailUtility("video_compress").getFileThumbnail(context, path!!, quality,
-                        position.toLong(), result)
+                ThumbnailUtility("video_compress").getFileThumbnail(
+                    context, path!!, quality,
+                    position.toLong(), result
+                )
             }
+
             "getMediaInfo" -> {
                 val path = call.argument<String>("path")
                 result.success(Utility(channelName).getMediaInfoJson(context, path!!).toString())
             }
+
             "deleteAllCache" -> {
                 result.success(Utility(channelName).deleteAllCache(context, result));
             }
+
             "setLogLevel" -> {
                 val logLevel = call.argument<Int>("logLevel")!!
                 Logger.setLogLevel(logLevel)
                 result.success(true);
             }
+
             "cancelCompression" -> {
-                transcodeFuture?.cancel(true)
+                VideoCompressor.cancel()
                 result.success(false);
             }
+
             "compressVideo" -> {
                 try {
                     val path = call.argument<String>("path")!!
-                    val quality = call.argument<Int>("quality")!!
-                    val deleteOrigin = call.argument<Boolean>("deleteOrigin")!!
-                    val includeAudio = call.argument<Boolean>("includeAudio") ?: true
-                    val frameRate = if (call.argument<Int>("frameRate")==null) 30 else call.argument<Int>("frameRate")
-
                     val tempDir: String = context.cacheDir!!.absolutePath
                     Log.e("VideoCompressPlugin", "path cache dir $tempDir")
                     val destFile = File(tempDir, "VID_${UUID.randomUUID()}${path.hashCode()}.mp4")
                     val destPath: String = destFile.absolutePath
 
                     Log.e("VideoCompressPlugin", "dest dir $destPath")
-                    var videoTrackStrategy: TrackStrategy = DefaultVideoStrategy.atMost(340).build();
-                    val audioTrackStrategy: TrackStrategy
-
-                    when (quality) {
-
-                        0 -> {
-                            videoTrackStrategy = DefaultVideoStrategy.atMost(720).build()
-                        }
-
-                        1 -> {
-                            videoTrackStrategy = DefaultVideoStrategy.atMost(360).build()
-                        }
-                        2 -> {
-                            videoTrackStrategy = DefaultVideoStrategy.atMost(640).build()
-                        }
-                        3 -> {
-
-                            assert(value = frameRate != null)
-                            videoTrackStrategy = DefaultVideoStrategy.Builder()
-                                .keyFrameInterval(3f)
-                                .bitRate(1280 * 720 * 4.toLong())
-                                .frameRate(frameRate!!) // will be capped to the input frameRate
-                                .build()
-                        }
-                        4 -> {
-                            videoTrackStrategy = DefaultVideoStrategy.atMost(480, 640).build()
-                        }
-                        5 -> {
-                            videoTrackStrategy = DefaultVideoStrategy.atMost(540, 960).build()
-                        }
-                        6 -> {
-                            videoTrackStrategy = DefaultVideoStrategy.atMost(720, 1280).build()
-                        }
-                        7 -> {
-                            videoTrackStrategy = DefaultVideoStrategy.atMost(1080, 1920).build()
-                        }
-                    }
-
-                    audioTrackStrategy = if (includeAudio) {
-                        val sampleRate = DefaultAudioStrategy.SAMPLE_RATE_AS_INPUT
-                        val channels = DefaultAudioStrategy.CHANNELS_AS_INPUT
-
-                        DefaultAudioStrategy.builder()
-                            .channels(channels)
-                            .sampleRate(sampleRate)
-                            .build()
-                    } else {
-                        RemoveTrackStrategy()
-                    }
 
                     val file = File(path)
                     if (!file.exists()) {
                         Log.e(TAG, "El archivo de entrada no existe: $path")
-                        result.error("FILE_NOT_FOUND", "El archivo de entrada no existe en la ruta: $path", null)
+                        result.error(
+                            "FILE_NOT_FOUND",
+                            "El archivo de entrada no existe en la ruta: $path",
+                            null
+                        )
                     }
 
                     Logger.setLogLevel(Logger.LEVEL_VERBOSE)
@@ -153,47 +120,62 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                     if (!cacheDir.canWrite()) {
                         Log.e(TAG, "No se puede escribir en el directorio de caché")
                     } else {
-                        Log.e(TAG, "Se puede escribir en el directorio de caché: ${cacheDir.absolutePath}")
+                        Log.e(
+                            TAG,
+                            "Se puede escribir en el directorio de caché: ${cacheDir.absolutePath}"
+                        )
                     }
 
-                    transcodeFuture = Transcoder.into(destPath)
-                        .addDataSource(FilePathDataSource(path))
-                        .setAudioTrackStrategy(audioTrackStrategy)
-                        .setVideoTrackStrategy(videoTrackStrategy)
-                        .setListener(object : TranscoderListener {
-                            override fun onTranscodeProgress(progress: Double) {
-                                Log.e(TAG, "onTranscodeProgress $progress")
-                                channel.invokeMethod("updateProgress", progress * 100.00)
+                    VideoCompressor.start(
+                        context = context,
+                        uris = listOf(path),
+                        isStreamable = false,
+                        storageConfiguration = CacheStorageConfiguration(),
+                        configureWith = Configuration(
+                            quality = VideoQuality.LOW,
+                            isMinBitrateCheckEnabled = true,
+                            videoBitrateInMbps = 5,
+                            disableAudio = false,
+                            videoNames = listOf("VID_${UUID.randomUUID()}${path.hashCode()}.mp4")
+                        ),
+                        listener = object : CompressionListener {
+                            override fun onProgress(index: Int, percent: Float) {
+                                Log.e(TAG, "onProgress $percent")
+                                channel.invokeMethod("updateProgress", percent * 100.00)
                             }
-                            override fun onTranscodeCompleted(successCode: Int) {
-                                Log.e(TAG, "onTranscodeCompleted $successCode")
+
+                            override fun onStart(index: Int) {
+                                Log.e(TAG, "onSuccess $index")
+                            }
+
+                            override fun onSuccess(index: Int, size: Long, path: String?) {
                                 channel.invokeMethod("updateProgress", 100.00)
                                 val json = Utility(channelName).getMediaInfoJson(context, destPath)
-                                Log.e(TAG, "onTranscodeCompleted $json")
                                 json.put("isCancel", false)
                                 result.success(json.toString())
-                                if (deleteOrigin) {
-                                    File(path).delete()
-                                }
+                                Log.e(TAG, "onSuccess $path $json")
                             }
 
-                            override fun onTranscodeCanceled() {
-                                Log.e(TAG, "onTranscodeCanceled")
-                                result.success(null)
+                            override fun onFailure(index: Int, failureMessage: String) {
+                                Log.e(TAG, "onFailure $failureMessage")
                             }
 
-                            override fun onTranscodeFailed(exception: Throwable) {
-                                exception.printStackTrace()
-                                Log.e(TAG, "onTranscodeFailed: error converter file ${exception.message}")
-                                result.success(null)
+                            override fun onCancelled(index: Int) {
+                                Log.e(TAG, "onCancelled")
                             }
-                        }).transcode()
+                        }
+                    )
                 } catch (ex: Exception) {
                     ex.printStackTrace()
                     Log.e(TAG, "Error al iniciar la transcodificación: ${ex.message}")
-                    result.error("TRANSCODE_INIT_FAILED", "Fallo en la inicialización de la transcodificación: ${ex.message}", null)
+                    result.error(
+                        "TRANSCODE_INIT_FAILED",
+                        "Fallo en la inicialización de la transcodificación: ${ex.message}",
+                        null
+                    )
                 }
             }
+
             else -> {
                 result.notImplemented()
             }
