@@ -189,8 +189,9 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                             }
                         }).transcode()
                 } catch (ex: Exception) {
-                    Log.e(TAG, "Error al iniciar la transcodificación: ${e.message}")
-                    result.error("TRANSCODE_INIT_FAILED", "Fallo en la inicialización de la transcodificación: ${e.message}", null)
+                    ex.printStackTrace()
+                    Log.e(TAG, "Error al iniciar la transcodificación: ${ex.message}")
+                    result.error("TRANSCODE_INIT_FAILED", "Fallo en la inicialización de la transcodificación: ${ex.message}", null)
                 }
             }
             else -> {
