@@ -4,6 +4,8 @@ import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.abedelazizshe.lightcompressorlibrary.CompressionListener
 import com.abedelazizshe.lightcompressorlibrary.VideoCompressor
@@ -29,6 +31,7 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
 
     private var _context: Context? = null
     private var _channel: MethodChannel? = null
+    val handler = Handler(Looper.getMainLooper())
     private val TAG = "VideoCompressPlugin"
     private val LOG = Logger(TAG)
     var channelName = "video_compress"
@@ -106,7 +109,9 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                         listener = object : CompressionListener {
                             override fun onProgress(index: Int, percent: Float) {
                                 Log.e(TAG, "onProgress $percent")
-                                channel.invokeMethod("updateProgress", percent * 100.00)
+                                handler.post {
+                                    channel.invokeMethod("updateProgress", percent * 100.00)
+                                }
                             }
 
                             override fun onStart(index: Int) {
@@ -114,11 +119,13 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                             }
 
                             override fun onSuccess(index: Int, size: Long, path: String?) {
-                                channel.invokeMethod("updateProgress", 100.00)
-                                val json = getMediaInfoJson(context, destPath)
-                                json.put("isCancel", false)
-                                result.success(json.toString())
-                                Log.e(TAG, "onSuccess $path $json")
+                                handler.post {
+                                    channel.invokeMethod("updateProgress", 100.00)
+                                    val json = getMediaInfoJson(context, destPath)
+                                    json.put("isCancel", false)
+                                    result.success(json.toString())
+                                    Log.e(TAG, "onSuccess $path $json")
+                                }
                             }
 
                             override fun onFailure(index: Int, failureMessage: String) {
