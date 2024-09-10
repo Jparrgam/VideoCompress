@@ -89,6 +89,7 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                 val out = SimpleDateFormat("yyyy-MM-dd hh-mm-ss").format(Date())
                 val destPath: String = tempDir + File.separator + "VID_" + out + path.hashCode() + ".mp4"
 
+                Log.e("VideoCompressPlugin", "dest dir $destPath")
                 var videoTrackStrategy: TrackStrategy = DefaultVideoStrategy.atMost(340).build();
                 val audioTrackStrategy: TrackStrategy
 
@@ -153,11 +154,14 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                         .setVideoTrackStrategy(videoTrackStrategy)
                         .setListener(object : TranscoderListener {
                             override fun onTranscodeProgress(progress: Double) {
+                                Log.e(TAG, "onTranscodeProgress $progress")
                                 channel.invokeMethod("updateProgress", progress * 100.00)
                             }
                             override fun onTranscodeCompleted(successCode: Int) {
+                                Log.e(TAG, "onTranscodeCompleted $successCode")
                                 channel.invokeMethod("updateProgress", 100.00)
                                 val json = Utility(channelName).getMediaInfoJson(context, destPath)
+                                Log.e(TAG, "onTranscodeCompleted $json")
                                 json.put("isCancel", false)
                                 result.success(json.toString())
                                 if (deleteOrigin) {
@@ -166,10 +170,13 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                             }
 
                             override fun onTranscodeCanceled() {
+                                Log.e(TAG, "onTranscodeCanceled")
                                 result.success(null)
                             }
 
                             override fun onTranscodeFailed(exception: Throwable) {
+                                exception.printStackTrace()
+                                Log.e(TAG, "onTranscodeFailed: error converter file ${exception.message}")
                                 result.success(null)
                             }
                         }).transcode()
