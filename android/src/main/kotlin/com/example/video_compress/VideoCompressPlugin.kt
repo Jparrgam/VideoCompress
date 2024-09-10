@@ -120,8 +120,9 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
 
                             override fun onSuccess(index: Int, size: Long, path: String?) {
                                 handler.post {
+                                    Log.e(TAG, "onSuccess $path $index $size")
                                     channel.invokeMethod("updateProgress", 100.00)
-                                    val json = getMediaInfoJson(context, destPath)
+                                    val json = getMediaInfoJson(context, path!!)
                                     json.put("isCancel", false)
                                     result.success(json.toString())
                                     Log.e(TAG, "onSuccess $path $json")
