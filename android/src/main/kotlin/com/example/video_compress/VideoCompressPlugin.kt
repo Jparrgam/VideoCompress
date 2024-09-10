@@ -12,6 +12,7 @@ import com.abedelazizshe.lightcompressorlibrary.VideoCompressor
 import com.abedelazizshe.lightcompressorlibrary.VideoQuality
 import com.abedelazizshe.lightcompressorlibrary.config.CacheStorageConfiguration
 import com.abedelazizshe.lightcompressorlibrary.config.Configuration
+import com.abedelazizshe.lightcompressorlibrary.config.StorageConfiguration
 import com.otaliastudios.transcoder.internal.utils.Logger
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.BinaryMessenger
@@ -37,8 +38,8 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
     var channelName = "video_compress"
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
-        val context = _context;
-        val channel = _channel;
+        val context = _context
+        val channel = _channel
 
         if (context == null || channel == null) {
             Log.w(TAG, "Calling VideoCompress plugin before initialization")
@@ -54,12 +55,12 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
             "setLogLevel" -> {
                 val logLevel = call.argument<Int>("logLevel")!!
                 Logger.setLogLevel(logLevel)
-                result.success(true);
+                result.success(true)
             }
 
             "cancelCompression" -> {
                 VideoCompressor.cancel()
-                result.success(false);
+                result.success(false)
             }
 
             "compressVideo" -> {
@@ -99,7 +100,7 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                         context = context,
                         uris = listOf(Uri.fromFile(file)),
                         isStreamable = false,
-                        storageConfiguration = CacheStorageConfiguration(),
+                        storageConfiguration = CustomCacheStorageConfiguration(),
                         configureWith = Configuration(
                             quality = VideoQuality.LOW,
                             isMinBitrateCheckEnabled = false,
@@ -206,4 +207,16 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
         }
     }
 
+}
+
+class CustomCacheStorageConfiguration : StorageConfiguration {
+    override fun createFileToSave(
+        context: Context,
+        videoFile: File,
+        fileName: String,
+        shouldSave: Boolean
+    ): File  {
+        val cacheDir = context.cacheDir
+       return File.createTempFile(fileName, ".mp4", cacheDir)
+    }
 }
