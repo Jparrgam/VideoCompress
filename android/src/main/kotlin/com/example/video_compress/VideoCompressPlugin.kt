@@ -1,33 +1,25 @@
 package com.example.video_compress
 
 import android.content.Context
+import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Build
 import android.util.Log
 import com.abedelazizshe.lightcompressorlibrary.CompressionListener
 import com.abedelazizshe.lightcompressorlibrary.VideoCompressor
 import com.abedelazizshe.lightcompressorlibrary.VideoQuality
 import com.abedelazizshe.lightcompressorlibrary.config.CacheStorageConfiguration
 import com.abedelazizshe.lightcompressorlibrary.config.Configuration
-import com.otaliastudios.transcoder.Transcoder
-import com.otaliastudios.transcoder.TranscoderListener
-import com.otaliastudios.transcoder.source.TrimDataSource
-import com.otaliastudios.transcoder.source.UriDataSource
-import com.otaliastudios.transcoder.strategy.DefaultAudioStrategy
-import com.otaliastudios.transcoder.strategy.DefaultVideoStrategy
-import com.otaliastudios.transcoder.strategy.RemoveTrackStrategy
-import com.otaliastudios.transcoder.strategy.TrackStrategy
+import com.otaliastudios.transcoder.internal.utils.Logger
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.BinaryMessenger
-import com.otaliastudios.transcoder.internal.utils.Logger
-import com.otaliastudios.transcoder.source.FilePathDataSource
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.PluginRegistry.Registrar
+import org.json.JSONObject
 import java.io.File
-import java.text.SimpleDateFormat
 import java.util.*
-import java.util.concurrent.Future
 
 /**
  * VideoCompressPlugin
@@ -51,28 +43,6 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
         }
 
         when (call.method) {
-            "getByteThumbnail" -> {
-                val path = call.argument<String>("path")
-                val quality = call.argument<Int>("quality")!!
-                val position = call.argument<Int>("position")!! // to long
-                ThumbnailUtility(channelName).getByteThumbnail(
-                    path!!,
-                    quality,
-                    position.toLong(),
-                    result
-                )
-            }
-
-            "getFileThumbnail" -> {
-                val path = call.argument<String>("path")
-                val quality = call.argument<Int>("quality")!!
-                val position = call.argument<Int>("position")!! // to long
-                ThumbnailUtility("video_compress").getFileThumbnail(
-                    context, path!!, quality,
-                    position.toLong(), result
-                )
-            }
-
             "getMediaInfo" -> {
                 val path = call.argument<String>("path")
                 result.success(Utility(channelName).getMediaInfoJson(context, path!!).toString())
@@ -150,10 +120,10 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
 
                             override fun onSuccess(index: Int, size: Long, path: String?) {
                                 channel.invokeMethod("updateProgress", 100.00)
-                                val json = Utility(channelName).getMediaInfoJson(context, destPath)
+                                val json = getMediaInfoJson(context, destPath)
                                 json.put("isCancel", false)
                                 result.success(json.toString())
-                                Log.e(TAG, "onSuccess $path $json")
+                                Log.e(TAG, "onSuccess $path $path")
                             }
 
                             override fun onFailure(index: Int, failureMessage: String) {
@@ -197,6 +167,34 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
         channel.setMethodCallHandler(this)
         _context = context
         _channel = channel
+    }
+
+    private fun getMediaInfoJson(context: Context, path: String): JSONObject {
+        val file = File(path)
+        val retriever = MediaMetadataRetriever()
+
+        retriever.setDataSource(context, Uri.fromFile(file))
+
+        val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+        val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) ?: ""
+        val author = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_AUTHOR) ?: ""
+        val widthStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+        val heightStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+        val duration = java.lang.Long.parseLong(durationStr)
+        val filesize = file.length()
+        retriever.release()
+
+        val json = JSONObject()
+
+        json.put("path", path)
+        json.put("title", title)
+        json.put("author", author)
+        json.put("width", width)
+        json.put("height", height)
+        json.put("duration", duration)
+        json.put("filesize", filesize)
+
+        return json
     }
 
     companion object {
