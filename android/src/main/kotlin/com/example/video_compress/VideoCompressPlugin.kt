@@ -86,8 +86,7 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
 
                 val tempDir: String = context.cacheDir!!.absolutePath
                 Log.e("VideoCompressPlugin", "path cache dir $tempDir")
-                val out = SimpleDateFormat("yyyy-MM-dd hh-mm-ss").format(Date())
-                val destPath: String = tempDir + File.separator + "VID_" + out + path.hashCode() + ".mp4"
+                val destPath: String = tempDir + File.separator + "VID_" + "_${UUID.randomUUID()}" + path.hashCode() + ".mp4"
 
                 Log.e("VideoCompressPlugin", "dest dir $destPath")
                 var videoTrackStrategy: TrackStrategy = DefaultVideoStrategy.atMost(340).build();
@@ -147,8 +146,8 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                     UriDataSource(context, Uri.parse(path))
                 }
 
-
-                transcodeFuture = Transcoder.into(destPath!!)
+                Log.e(TAG, "init compress native kotlon $destPath")
+                transcodeFuture = Transcoder.into(destPath)
                         .addDataSource(dataSource)
                         .setAudioTrackStrategy(audioTrackStrategy)
                         .setVideoTrackStrategy(videoTrackStrategy)
