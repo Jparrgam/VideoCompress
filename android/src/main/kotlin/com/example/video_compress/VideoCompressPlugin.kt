@@ -77,77 +77,86 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                 result.success(false);
             }
             "compressVideo" -> {
-                val path = call.argument<String>("path")!!
-                val quality = call.argument<Int>("quality")!!
-                val deleteOrigin = call.argument<Boolean>("deleteOrigin")!!
-                val includeAudio = call.argument<Boolean>("includeAudio") ?: true
-                val frameRate = if (call.argument<Int>("frameRate")==null) 30 else call.argument<Int>("frameRate")
+                try {
+                    val path = call.argument<String>("path")!!
+                    val quality = call.argument<Int>("quality")!!
+                    val deleteOrigin = call.argument<Boolean>("deleteOrigin")!!
+                    val includeAudio = call.argument<Boolean>("includeAudio") ?: true
+                    val frameRate = if (call.argument<Int>("frameRate")==null) 30 else call.argument<Int>("frameRate")
 
-                val tempDir: String = context.cacheDir!!.absolutePath
-                Log.e("VideoCompressPlugin", "path cache dir $tempDir")
-                val destFile = File(tempDir, "VID_${UUID.randomUUID()}${path.hashCode()}.mp4")
-                val destPath: String = destFile.absolutePath
+                    val tempDir: String = context.cacheDir!!.absolutePath
+                    Log.e("VideoCompressPlugin", "path cache dir $tempDir")
+                    val destFile = File(tempDir, "VID_${UUID.randomUUID()}${path.hashCode()}.mp4")
+                    val destPath: String = destFile.absolutePath
 
-                Log.e("VideoCompressPlugin", "dest dir $destPath")
-                var videoTrackStrategy: TrackStrategy = DefaultVideoStrategy.atMost(340).build();
-                val audioTrackStrategy: TrackStrategy
+                    Log.e("VideoCompressPlugin", "dest dir $destPath")
+                    var videoTrackStrategy: TrackStrategy = DefaultVideoStrategy.atMost(340).build();
+                    val audioTrackStrategy: TrackStrategy
 
-                when (quality) {
+                    when (quality) {
 
-                    0 -> {
-                      videoTrackStrategy = DefaultVideoStrategy.atMost(720).build()
-                    }
+                        0 -> {
+                            videoTrackStrategy = DefaultVideoStrategy.atMost(720).build()
+                        }
 
-                    1 -> {
-                        videoTrackStrategy = DefaultVideoStrategy.atMost(360).build()
-                    }
-                    2 -> {
-                        videoTrackStrategy = DefaultVideoStrategy.atMost(640).build()
-                    }
-                    3 -> {
+                        1 -> {
+                            videoTrackStrategy = DefaultVideoStrategy.atMost(360).build()
+                        }
+                        2 -> {
+                            videoTrackStrategy = DefaultVideoStrategy.atMost(640).build()
+                        }
+                        3 -> {
 
-                        assert(value = frameRate != null)
-                        videoTrackStrategy = DefaultVideoStrategy.Builder()
+                            assert(value = frameRate != null)
+                            videoTrackStrategy = DefaultVideoStrategy.Builder()
                                 .keyFrameInterval(3f)
                                 .bitRate(1280 * 720 * 4.toLong())
                                 .frameRate(frameRate!!) // will be capped to the input frameRate
                                 .build()
+                        }
+                        4 -> {
+                            videoTrackStrategy = DefaultVideoStrategy.atMost(480, 640).build()
+                        }
+                        5 -> {
+                            videoTrackStrategy = DefaultVideoStrategy.atMost(540, 960).build()
+                        }
+                        6 -> {
+                            videoTrackStrategy = DefaultVideoStrategy.atMost(720, 1280).build()
+                        }
+                        7 -> {
+                            videoTrackStrategy = DefaultVideoStrategy.atMost(1080, 1920).build()
+                        }
                     }
-                    4 -> {
-                        videoTrackStrategy = DefaultVideoStrategy.atMost(480, 640).build()
+
+                    audioTrackStrategy = if (includeAudio) {
+                        val sampleRate = DefaultAudioStrategy.SAMPLE_RATE_AS_INPUT
+                        val channels = DefaultAudioStrategy.CHANNELS_AS_INPUT
+
+                        DefaultAudioStrategy.builder()
+                            .channels(channels)
+                            .sampleRate(sampleRate)
+                            .build()
+                    } else {
+                        RemoveTrackStrategy()
                     }
-                    5 -> {
-                        videoTrackStrategy = DefaultVideoStrategy.atMost(540, 960).build()
+
+                    val file = File(path)
+                    if (!file.exists()) {
+                        Log.e(TAG, "El archivo de entrada no existe: $path")
+                        result.error("FILE_NOT_FOUND", "El archivo de entrada no existe en la ruta: $path", null)
                     }
-                    6 -> {
-                        videoTrackStrategy = DefaultVideoStrategy.atMost(720, 1280).build()
+
+                    Logger.setLogLevel(Logger.LEVEL_VERBOSE)
+                    Log.e(TAG, "init compress native kotlon $destPath")
+
+                    val cacheDir = context.cacheDir
+                    if (!cacheDir.canWrite()) {
+                        Log.e(TAG, "No se puede escribir en el directorio de caché")
+                    } else {
+                        Log.e(TAG, "Se puede escribir en el directorio de caché: ${cacheDir.absolutePath}")
                     }
-                    7 -> {
-                        videoTrackStrategy = DefaultVideoStrategy.atMost(1080, 1920).build()
-                    }                    
-                }
 
-                audioTrackStrategy = if (includeAudio) {
-                    val sampleRate = DefaultAudioStrategy.SAMPLE_RATE_AS_INPUT
-                    val channels = DefaultAudioStrategy.CHANNELS_AS_INPUT
-
-                    DefaultAudioStrategy.builder()
-                        .channels(channels)
-                        .sampleRate(sampleRate)
-                        .build()
-                } else {
-                    RemoveTrackStrategy()
-                }
-
-                val file = File(path)
-                if (!file.exists()) {
-                    Log.e(TAG, "El archivo de entrada no existe: $path")
-                    result.error("FILE_NOT_FOUND", "El archivo de entrada no existe en la ruta: $path", null)
-                }
-
-                Logger.setLogLevel(Logger.LEVEL_ERROR)
-                Log.e(TAG, "init compress native kotlon $destPath")
-                transcodeFuture = Transcoder.into(destPath)
+                    transcodeFuture = Transcoder.into(destPath)
                         .addDataSource(FilePathDataSource(path))
                         .setAudioTrackStrategy(audioTrackStrategy)
                         .setVideoTrackStrategy(videoTrackStrategy)
@@ -179,6 +188,10 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                                 result.success(null)
                             }
                         }).transcode()
+                } catch (ex: Exception) {
+                    Log.e(TAG, "Error al iniciar la transcodificación: ${e.message}")
+                    result.error("TRANSCODE_INIT_FAILED", "Fallo en la inicialización de la transcodificación: ${e.message}", null)
+                }
             }
             else -> {
                 result.notImplemented()
