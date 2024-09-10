@@ -105,7 +105,7 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                             quality = VideoQuality.LOW,
                             isMinBitrateCheckEnabled = false,
                             disableAudio = true,
-                            videoNames = listOf("VID_${UUID.randomUUID()}${path.hashCode()}.mp4")
+                            videoNames = listOf("VID_${UUID.randomUUID()}${path.hashCode()}")
                         ),
                         listener = object : CompressionListener {
                             override fun onProgress(index: Int, percent: Float) {
@@ -174,25 +174,9 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
     }
 
     private fun getMediaInfoJson(context: Context, path: String): JSONObject {
-        val file = File(path)
-        val retriever = MediaMetadataRetriever()
-
-        retriever.setDataSource(context, Uri.fromFile(file))
-
-        val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
-        val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) ?: ""
-        val author = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_AUTHOR) ?: ""
-        val duration = java.lang.Long.parseLong(durationStr)
-        val filesize = file.length()
-        retriever.release()
-
         val json = JSONObject()
 
         json.put("path", path)
-        json.put("title", title)
-        json.put("author", author)
-        json.put("duration", duration)
-        json.put("filesize", filesize)
 
         return json
     }
