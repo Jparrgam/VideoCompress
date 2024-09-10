@@ -99,8 +99,7 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                         storageConfiguration = CacheStorageConfiguration(),
                         configureWith = Configuration(
                             quality = VideoQuality.LOW,
-                            isMinBitrateCheckEnabled = true,
-                            videoBitrateInMbps = 5,
+                            isMinBitrateCheckEnabled = false,
                             disableAudio = true,
                             videoNames = listOf("VID_${UUID.randomUUID()}${path.hashCode()}.mp4")
                         ),
@@ -119,7 +118,7 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                                 val json = getMediaInfoJson(context, destPath)
                                 json.put("isCancel", false)
                                 result.success(json.toString())
-                                Log.e(TAG, "onSuccess $path $path")
+                                Log.e(TAG, "onSuccess $path $json")
                             }
 
                             override fun onFailure(index: Int, failureMessage: String) {
