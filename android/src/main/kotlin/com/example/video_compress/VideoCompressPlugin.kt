@@ -45,11 +45,7 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
         when (call.method) {
             "getMediaInfo" -> {
                 val path = call.argument<String>("path")
-                result.success(Utility(channelName).getMediaInfoJson(context, path!!).toString())
-            }
-
-            "deleteAllCache" -> {
-                result.success(Utility(channelName).deleteAllCache(context, result));
+                result.success(getMediaInfoJson(context, path!!).toString())
             }
 
             "setLogLevel" -> {
@@ -105,7 +101,7 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                             quality = VideoQuality.LOW,
                             isMinBitrateCheckEnabled = true,
                             videoBitrateInMbps = 5,
-                            disableAudio = false,
+                            disableAudio = true,
                             videoNames = listOf("VID_${UUID.randomUUID()}${path.hashCode()}.mp4")
                         ),
                         listener = object : CompressionListener {
@@ -178,8 +174,6 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
         val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
         val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) ?: ""
         val author = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_AUTHOR) ?: ""
-        val widthStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
-        val heightStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
         val duration = java.lang.Long.parseLong(durationStr)
         val filesize = file.length()
         retriever.release()
@@ -189,8 +183,6 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
         json.put("path", path)
         json.put("title", title)
         json.put("author", author)
-        json.put("width", width)
-        json.put("height", height)
         json.put("duration", duration)
         json.put("filesize", filesize)
 
