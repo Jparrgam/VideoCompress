@@ -102,11 +102,11 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                         isStreamable = false,
                         storageConfiguration = CustomCacheStorageConfiguration(),
                         configureWith = Configuration(
-                            quality = VideoQuality.MEDIUM,
+                            quality = VideoQuality.HIGH,
                             isMinBitrateCheckEnabled = false,
-                            disableAudio = true,
-                            videoNames = listOf("VID_"),
-                            videoBitrateInMbps = 4
+                            videoNames = listOf("VID_${UUID.randomUUID()}${path.hashCode()}.mp4"),
+                            videoBitrateInMbps = 3,
+                            keepOriginalResolution = true
                         ),
                         listener = object : CompressionListener {
                             override fun onProgress(index: Int, percent: Float) {
@@ -202,6 +202,8 @@ class CustomCacheStorageConfiguration : StorageConfiguration {
         shouldSave: Boolean
     ): File  {
         val cacheDir = context.cacheDir
-       return File.createTempFile(fileName, ".mp4", cacheDir)
+        val tempFile = File(cacheDir.parentFile, fileName)
+        tempFile.createNewFile()
+        return tempFile
     }
 }
