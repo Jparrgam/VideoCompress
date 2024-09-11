@@ -102,10 +102,11 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                         isStreamable = false,
                         storageConfiguration = CustomCacheStorageConfiguration(),
                         configureWith = Configuration(
-                            quality = VideoQuality.LOW,
-                            isMinBitrateCheckEnabled = false,
+                            quality = VideoQuality.MEDIUM,
+                            isMinBitrateCheckEnabled = true,
                             disableAudio = true,
-                            videoNames = listOf("VID_${UUID.randomUUID()}${path.hashCode()}")
+                            videoNames = listOf("VID_"),
+                            videoBitrateInMbps = 4
                         ),
                         listener = object : CompressionListener {
                             override fun onProgress(index: Int, percent: Float) {
