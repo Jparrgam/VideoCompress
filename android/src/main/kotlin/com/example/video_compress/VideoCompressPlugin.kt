@@ -103,7 +103,7 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                         storageConfiguration = CustomCacheStorageConfiguration(),
                         configureWith = Configuration(
                             quality = VideoQuality.MEDIUM,
-                            isMinBitrateCheckEnabled = true,
+                            isMinBitrateCheckEnabled = false,
                             disableAudio = true,
                             videoNames = listOf("VID_"),
                             videoBitrateInMbps = 4
